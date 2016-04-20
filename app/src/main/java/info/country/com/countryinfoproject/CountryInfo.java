@@ -2,6 +2,7 @@ package info.country.com.countryinfoproject;
 
 /**
  * Created by JP on 20-04-2016.
+ * Model class for Country information's
  */
 public class CountryInfo {
 
@@ -9,11 +10,7 @@ public class CountryInfo {
     private String description;
     private String imageUrl;
 
-    public CountryInfo(String title, String description, String imageUrl) {
-        this.title = title;
-        this.description = description;
-        this.imageUrl = imageUrl;
-    }
+    public CountryInfo() {}
 
     public String getTitle() {
         return title;
