@@ -5,6 +5,9 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.widget.ListView;
 
 import org.json.JSONArray;
@@ -30,6 +33,7 @@ public class CountryInfoMainScreen extends Activity {
     private ArrayList<CountryInfo> countryInfoList;
     private ActionBar actionBar;
     private String projectTitle;
+    private CountryInfoJSONAsyncTask jsonDownloadTask = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,74 +49,99 @@ public class CountryInfoMainScreen extends Activity {
         ListView infoList = (ListView) findViewById(R.id.country_info_list);
         infoList.setAdapter(countryInfoAdapter);
 
-        new CountryInfoJSONAsyncTask().execute(JSON_URL);
+        jsonDownloadTask = new CountryInfoJSONAsyncTask();
+        jsonDownloadTask.execute(JSON_URL);
     }
 
-    private class CountryInfoJSONAsyncTask extends AsyncTask<String, Void, Boolean> {
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater menuInflater = getMenuInflater();
+        menuInflater.inflate(R.menu.menu_country_info_main_screen, menu);
+        return true;
+    }
 
-        ProgressDialog downloadDialog;
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            downloadDialog = new ProgressDialog(CountryInfoMainScreen.this);
-            downloadDialog.setTitle("Country Information");
-            downloadDialog.setMessage("Downloading, Please wait...");
-            downloadDialog.show();
-            downloadDialog.setCancelable(true);
-        }
-
-        @Override
-        protected Boolean doInBackground(String... params) {
-
-            try {
-                URL url = new URL(params[0]);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.connect();
-
-                System.out.println("Response Code: " + conn.getResponseCode());
-                if (conn.getResponseCode() == 200) {
-                    InputStream is = conn.getInputStream();
-                    BufferedReader streamReader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-
-                    StringBuilder responseStrBuilder = new StringBuilder();
-                    String inputStr;
-                    while ((inputStr = streamReader.readLine()) != null)
-                        responseStrBuilder.append(inputStr);
-
-                    JSONObject object = new JSONObject(responseStrBuilder.toString());
-                    projectTitle = object.getString("title");
-
-                    JSONArray jsonarray = object.getJSONArray("rows");
-                    for (int i = 0; i < jsonarray.length(); i++) {
-                        JSONObject jsonobject = jsonarray.getJSONObject(i);
-                        CountryInfo countryInfo = new CountryInfo();
-                        countryInfo.setTitle(jsonobject.getString("title"));
-                        countryInfo.setDescription(jsonobject.getString("description"));
-                        countryInfo.setImageUrl(jsonobject.getString("imageHref"));
-                        countryInfoList.add(countryInfo);
-                    }
-
-                    return true;
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch(item.getItemId()) {
+            case R.id.action_refresh:
+                if (jsonDownloadTask != null) {
+                    jsonDownloadTask.cancel(true);
+                    jsonDownloadTask = null;
+                    jsonDownloadTask = new CountryInfoJSONAsyncTask();
+                    jsonDownloadTask.execute(JSON_URL);
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (JSONException e) {
-                e.printStackTrace();
+                break;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    class CountryInfoJSONAsyncTask extends AsyncTask<String, Void, Boolean> {
+
+            ProgressDialog downloadDialog;
+
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+                downloadDialog = new ProgressDialog(CountryInfoMainScreen.this);
+                downloadDialog.setTitle("Country Information");
+                downloadDialog.setMessage("Downloading, Please wait...");
+                downloadDialog.show();
+                downloadDialog.setCancelable(true);
             }
 
-            return false;
-        }
+            @Override
+            protected Boolean doInBackground(String... params) {
 
-        @Override
-        protected void onPostExecute(Boolean result) {
-            if (result)
-                actionBar.setTitle(projectTitle);
-            else
-                System.out.println("Download Fails");
+                try {
+                    URL url = new URL(params[0]);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.connect();
 
-            downloadDialog.cancel();
-            countryInfoAdapter.notifyDataSetChanged();
+                    System.out.println("Response Code: " + conn.getResponseCode());
+                    if (conn.getResponseCode() == 200) {
+                        InputStream is = conn.getInputStream();
+                        BufferedReader streamReader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+
+                        StringBuilder responseStrBuilder = new StringBuilder();
+                        String inputStr;
+                        while ((inputStr = streamReader.readLine()) != null)
+                            responseStrBuilder.append(inputStr);
+
+                        JSONObject object = new JSONObject(responseStrBuilder.toString());
+                        projectTitle = object.getString("title");
+
+                        JSONArray jsonarray = object.getJSONArray("rows");
+                        for (int i = 0; i < jsonarray.length(); i++) {
+                            JSONObject jsonobject = jsonarray.getJSONObject(i);
+                            CountryInfo countryInfo = new CountryInfo();
+                            countryInfo.setTitle(jsonobject.getString("title"));
+                            countryInfo.setDescription(jsonobject.getString("description"));
+                            countryInfo.setImageUrl(jsonobject.getString("imageHref"));
+                            countryInfoList.add(countryInfo);
+                        }
+
+                        return true;
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                return false;
+            }
+
+            @Override
+            protected void onPostExecute(Boolean result) {
+                if (result)
+                    actionBar.setTitle(projectTitle);
+                else
+                    System.out.println("Download Fails");
+
+                downloadDialog.cancel();
+                countryInfoAdapter.notifyDataSetChanged();
+            }
         }
-    }
 }
+
+
