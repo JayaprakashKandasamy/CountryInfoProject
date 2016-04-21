@@ -63,8 +63,6 @@ public class CountryInfoAdapter extends ArrayAdapter<CountryInfo> {
         holder.txtDescription.setText(countryInfo.get(position).getDescription());
         holder.imgImage.setImageResource(R.drawable.android);
 
-        //String imageKey = countryInfo.get(position).getImageUrl();
-
         Bitmap bm = getBitmapFromMemCache(countryInfo.get(position).getTitle());
         if (bm == null){
             new ImageDownloadAsyncTask(holder.imgImage, countryInfo.get(position).getTitle()).execute(countryInfo.get(position).getImageUrl());
@@ -74,14 +72,12 @@ public class CountryInfoAdapter extends ArrayAdapter<CountryInfo> {
     }
 
     public void addBitmapToMemoryCache(String key, Bitmap bitmap) {
-        System.out.println("Add = "+ key);
         if (getBitmapFromMemCache(key) == null) {
             mLruCache.put(key, bitmap);
         }
     }
 
     public Bitmap getBitmapFromMemCache(String key) {
-        System.out.println("Get = "+ key);
         return (Bitmap) mLruCache.get(key);
     }
 
