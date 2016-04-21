@@ -1,9 +1,11 @@
 package info.country.com.countryinfoproject;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
+import android.util.LruCache;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,11 +28,21 @@ public class CountryInfoAdapter extends ArrayAdapter<CountryInfo> {
     LayoutInflater rowInflater;
     ViewHolder holder;
 
+    private LruCache<String, Bitmap> mLruCache;
+
     public CountryInfoAdapter(Context context, int inflateLayout, ArrayList<CountryInfo> countryInfo) {
         super(context, inflateLayout, countryInfo);
         rowInflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         this.inflateLayout = inflateLayout;
         this.countryInfo = countryInfo;
+
+        final int memClass = ((ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE)).getMemoryClass();
+        final int cacheSize = 1024 * 1024 * memClass / 8;
+        mLruCache = new LruCache<String, Bitmap>(cacheSize) {
+            protected int sizeOf(String key, Bitmap bitmap) {
+                return bitmap.getByteCount();
+            }
+        };
     }
 
     @Override
@@ -51,10 +63,26 @@ public class CountryInfoAdapter extends ArrayAdapter<CountryInfo> {
         holder.txtDescription.setText(countryInfo.get(position).getDescription());
         holder.imgImage.setImageResource(R.drawable.android);
 
-        if (countryInfo.get(position).getImageUrl() != null)
-            new ImageDownloadAsyncTask(holder.imgImage).execute(countryInfo.get(position).getImageUrl());
+        //String imageKey = countryInfo.get(position).getImageUrl();
+
+        Bitmap bm = getBitmapFromMemCache(countryInfo.get(position).getTitle());
+        if (bm == null){
+            new ImageDownloadAsyncTask(holder.imgImage, countryInfo.get(position).getTitle()).execute(countryInfo.get(position).getImageUrl());
+        }
 
         return view;
+    }
+
+    public void addBitmapToMemoryCache(String key, Bitmap bitmap) {
+        System.out.println("Add = "+ key);
+        if (getBitmapFromMemCache(key) == null) {
+            mLruCache.put(key, bitmap);
+        }
+    }
+
+    public Bitmap getBitmapFromMemCache(String key) {
+        System.out.println("Get = "+ key);
+        return (Bitmap) mLruCache.get(key);
     }
 
     /**
@@ -64,9 +92,11 @@ public class CountryInfoAdapter extends ArrayAdapter<CountryInfo> {
      */
     private class ImageDownloadAsyncTask extends AsyncTask<String, Void, Bitmap> {
         ImageView bitmapImage;
+        String title;
 
-        public ImageDownloadAsyncTask(ImageView bitmapImage) {
+        public ImageDownloadAsyncTask(ImageView bitmapImage, String title) {
             this.bitmapImage = bitmapImage;
+            this.title = title;
         }
 
         @Override
@@ -77,6 +107,10 @@ public class CountryInfoAdapter extends ArrayAdapter<CountryInfo> {
                 bitmap = BitmapFactory.decodeStream(inputStream);
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+
+            if (params[0] != null && bitmap != null) {
+                addBitmapToMemoryCache(title, bitmap);
             }
             return bitmap;
         }
